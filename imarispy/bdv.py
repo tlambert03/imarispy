@@ -20,6 +20,7 @@ def np_to_bdv(array,
 
     # force 5D
     # TODO: configure/rearrange axes
+    # for now... assume TCZYX axis order
     if not array.ndim == 5:
         array = array.reshape(tuple([1] * (5 - array.ndim)) + array.shape)
     nt, nc, nz, ny, nx = array.shape
@@ -48,8 +49,8 @@ def np_to_bdv(array,
                 data = np.squeeze(array[t, c]).astype(np.uint16)
                 for r in range(nr):
                     grp = hf.create_group(fmt.format(t, c, r))
-                    subsamp = subsample_data(data, subsamp[r])
-                    grp.create_dataset('cells', data=subsamp,
+                    subdata = subsample_data(data, subsamp[r])
+                    grp.create_dataset('cells', data=subdata,
                                        chunks=chunks[r],
                                        maxshape=(None, None, None),
                                        scaleoffset=0,
@@ -59,9 +60,7 @@ def np_to_bdv(array,
     return
 
 
-def map_imaris_names_to_bdv(hf):
-    """ Takes an Imaris file and creates required links for BDV compatibility"""
-
+def detect_ims_shape(hf):
     # will be populated with shape (nt, nc, nz, ny, nx) of dataset
     shape = [1, 0, 0, 0, 0]
     KEYS = {
@@ -80,6 +79,13 @@ def map_imaris_names_to_bdv(hf):
                 shape[KEYS[name.lower()]] = int(value.tostring().decode('ASCII'))
 
     hf.visititems(visitor)
+    return shape
+
+
+def map_imaris_names_to_bdv(hf):
+    """ Takes an Imaris file and creates required links for BDV compatibility"""
+
+    shape = detect_ims_shape(hf)
 
     assert all([x > 0 for x in shape[-3:]]), 'Could not detect 3D volume size in HD5 file'
     if shape[1] == 0:
