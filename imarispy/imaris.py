@@ -2,6 +2,8 @@ import numpy as np
 import re
 import h5py
 from .util import h5str, make_thumbnail, subsample_data
+import logging
+logger = logging.getLogger(__name__)
 
 
 def np_to_ims(array, fname='myfile.ims',
@@ -89,8 +91,11 @@ def np_to_ims(array, fname='myfile.ims',
         for grp, (key, value) in ATTRS:
             hf[grp].attrs.create(key, h5str(value))
 
-        thumb = make_thumbnail(array[0], thumbsize)
-        hf.create_dataset('Thumbnail/Data', data=thumb, dtype='u1')
+        try:
+            thumb = make_thumbnail(array[0], thumbsize)
+            hf.create_dataset('Thumbnail/Data', data=thumb, dtype='u1')
+        except Exception:
+            logger.warn('Failed to generate Imaris thumbnail')
 
         # add data
         fmt = '/DataSet/ResolutionLevel {r}/TimePoint {t}/Channel {c}/'
@@ -107,7 +112,7 @@ def np_to_ims(array, fname='myfile.ims',
                     grp.attrs.create('HistogramMin', h5str(edges[0]))
                     grp.attrs.create('HistogramMax', h5str(edges[-1]))
                     grp.create_dataset('Data', data=data,
-                                       chunks=chunks[r],
+                                       chunks=tuple(min(*n) for n in zip(chunks[r], data.shape)),
                                        compression=compression)
                     grp.attrs.create('ImageSizeX', h5str(data.shape[2]))
                     grp.attrs.create('ImageSizeY', h5str(data.shape[1]))
