@@ -17,6 +17,8 @@ def np_to_ims(array, fname='myfile.ims',
     assert all([len(i) == 3 for i in subsamp]), 'Only deal with 3D chunks'
     assert all([len(i) == len(x) for i, x in zip(subsamp, chunks)])
     assert compression in (None, 'gzip', 'lzf', 'szip'), 'Unknown compression type'
+    if not fname.endswith('.ims'):
+        fname = fname + '.ims'
 
     # force 5D
     if not array.ndim == 5:
