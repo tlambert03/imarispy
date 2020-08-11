@@ -190,7 +190,7 @@ if __name__ == "__main__":
         os.remove(fn)
     array_to_ims(im, fn)
 
-    # dask array to ims
+    # create dask array
     import dask.array as da
     im_da = da.from_array(im)
 
