@@ -174,28 +174,3 @@ def unmap_bdv_from_imaris(hf):
         if re.match(r'^t\d{5}$', i) or re.match(r'^s\d{2}$', i):
             del hf[i]
     return
-
-
-if __name__ == "__main__":
-
-    # Example usage
-
-    # create image
-    im = np.random.randint(0, 100, (20, 30, 40), dtype=np.uint16)
-
-    # numpy array to ims
-    import os
-    fn = '/tmp/myfile_np.ims'
-    if os.path.exists(fn):
-        os.remove(fn)
-    array_to_ims(im, fn)
-
-    # create dask array
-    import dask.array as da
-    im_da = da.from_array(im)
-
-    # dask array to ims
-    fn = '/tmp/myfile_da.ims'
-    if os.path.exists(fn):
-        os.remove(fn)
-    array_to_ims(im_da, fn)
