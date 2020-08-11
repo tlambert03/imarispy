@@ -1,12 +1,12 @@
 import numpy as np
 import re
 import h5py
-from util import h5str, make_thumbnail, subsample_data
+from .util import h5str, make_thumbnail, subsample_data
 import logging
 logger = logging.getLogger(__name__)
 
 
-def array_to_ims(array, fname='myfile.ims',
+def np_to_ims(array, fname='myfile.ims',
               subsamp=((1, 1, 1), (1, 2, 2)),
               chunks=((16, 128, 128), (64, 64, 64)),
               compression='gzip',
