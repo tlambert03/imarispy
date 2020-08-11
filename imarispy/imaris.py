@@ -161,7 +161,7 @@ def np_to_ims(array, fname='myfile.ims',
 
         # stream dask array into file
         if not is_numpy:
-            print("Writing dask array into %s" %fn)
+            print("Writing dask array into %s" %fname)
             dask.array.core.store(list(dset_map.values()),
                                   list(dset_map.keys())
                                   )
