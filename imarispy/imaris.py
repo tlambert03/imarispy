@@ -12,6 +12,17 @@ def np_to_ims(array, fname='myfile.ims',
               compression='gzip',
               thumbsize=256,
               dx=0.1, dz=0.25):
+    """
+    :param array: Supports numpy and dask arrays
+    :param fname:
+    :param subsamp:
+    :param chunks:
+    :param compression:
+    :param thumbsize:
+    :param dx:
+    :param dz:
+    :return:
+    """
 
     assert len(subsamp) == len(chunks)
     assert all([len(i) == 3 for i in subsamp]), 'Only deal with 3D chunks'
@@ -93,6 +104,16 @@ def np_to_ims(array, fname='myfile.ims',
         for grp, (key, value) in ATTRS:
             hf[grp].attrs.create(key, h5str(value))
 
+        if type(array) == np.ndarray:
+            is_numpy = True
+        else:
+            import dask
+            if type(array) == dask.array.core.Array:
+                is_numpy = False
+                dset_map = dict()
+            else:
+                raise(Exception('array type not supported'))
+
         try:
             thumb = make_thumbnail(array[0], thumbsize)
             hf.create_dataset('Thumbnail/Data', data=thumb, dtype='u1')
@@ -107,18 +128,43 @@ def np_to_ims(array, fname='myfile.ims',
                 for r in range(nr):
                     if any([i > 1 for i in subsamp[r]]):
                         data = subsample_data(data, subsamp[r])
-                    hist, edges = np.histogram(data, 256)
+
                     grp = hf.create_group(fmt.format(r=r, t=t, c=c))
-                    print("Writing: %s" % grp)
+                    curr_chunks = tuple(min(*n) for n in zip(chunks[r], data.shape))
+                    if is_numpy:
+                        # if array is a np.array, write to file immediately
+                        print("Writing: %s" % grp)
+                        hist, edges = np.histogram(data, 256)
+                        grp.create_dataset('Data',
+                                           data=data,
+                                           chunks=curr_chunks,
+                                           compression=compression)
+                    else:
+                        # if array is da.array, only prepare hdf5 dsets
+                        # and write after dask optimized chunk calculation
+                        # for the different resolutions and use
+                        # dask.array.core.store to stream the data to disk.
+                        hist, edges = np.histogram(np.zeros(1), 256)
+                        dset = grp.require_dataset('Data',
+                                                   shape=data.shape,
+                                                   dtype=data.dtype,
+                                                   chunks=curr_chunks,
+                                                   compression=compression)
+                        dset_map[dset] = data
+
                     grp.create_dataset('Histogram', data=hist.astype(np.uint64))
                     grp.attrs.create('HistogramMin', h5str(edges[0]))
                     grp.attrs.create('HistogramMax', h5str(edges[-1]))
-                    grp.create_dataset('Data', data=data,
-                                       chunks=tuple(min(*n) for n in zip(chunks[r], data.shape)),
-                                       compression=compression)
                     grp.attrs.create('ImageSizeX', h5str(data.shape[2]))
                     grp.attrs.create('ImageSizeY', h5str(data.shape[1]))
                     grp.attrs.create('ImageSizeZ', h5str(data.shape[0]))
+
+        # stream dask array into file
+        if not is_numpy:
+            print("Writing dask array into %s" %fname)
+            dask.array.core.store(list(dset_map.values()),
+                                  list(dset_map.keys())
+                                  )
 
     return fname
 
